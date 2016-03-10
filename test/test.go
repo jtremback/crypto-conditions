@@ -1,4 +1,4 @@
-package condition
+package test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jtremback/crypto-conditions/condition/encoding"
+	"github.com/jtremback/crypto-conditions/encoding"
 )
 
 func TestVarStuff(t *testing.T) {
