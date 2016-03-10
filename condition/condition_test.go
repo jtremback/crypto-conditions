@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/jtremback/crypto-conditions/condition/encoding"
 )
 
 func TestVarStuff(t *testing.T) {
 
-	empty := makeVarbyte([]byte{})
+	empty := encoding.MakeVarbyte([]byte{})
 
 	if bytes.Compare(empty, []byte{0}) != 0 {
 		t.Fatal(empty)
@@ -27,7 +29,7 @@ func TestVarStuff(t *testing.T) {
 	}
 	fmt.Println(seri)
 
-	deseri, length := parseVarray(seri)
+	deseri, length := encoding.ParseVarray(seri)
 	if length != 15 {
 		t.Fatal(length)
 	}
@@ -38,10 +40,9 @@ func TestVarStuff(t *testing.T) {
 }
 
 func TestMakeSha256Fulfillment(t *testing.T) {
-	var sha256 Sha256
 	pre := []byte("foo")
 
-	ful := sha256.MakeFulfillment(pre)
+	ful := sha256Hashlock.MakeFulfillment(pre)
 
 	if ful != "cf:1:1:Zm9v" {
 		t.Fatal(ful)
@@ -66,6 +67,6 @@ func TestConditionFromSha256Fulfillment(t *testing.T) {
 	fmt.Println(cond)
 }
 
-func TestMakeRsaSha256Fulfillment(t *testing.T) {
-	var rsaSha256 RsaSha256Fulfillment
+func TestMakeEd25519Sha256Fulfillment(t *testing.T) {
+	var rsaSha256 Ed25519Sha256Fulfillment
 }
