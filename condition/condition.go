@@ -145,11 +145,11 @@ func (self Ed25519Sha256) ConditionFromFulfillment(ful string) (string, error) {
 	l, o = binary.Uvarint(b)
 	arr, b = append(arr, b[o:][:l]...), b[o:][l:]
 
-	maxFulfillmentLength, o := binary.Uvarint(b)
+	maxDynamicMessageLength, o := binary.Uvarint(b)
 	arr = append(arr, b[:o]...)
 
 	b64 := base64.URLEncoding.EncodeToString(arr)
-	length := fmt.Sprintf("%d", uint64(len(arr))+maxFulfillmentLength+64)
+	length := fmt.Sprintf("%d", uint64(len(arr))+maxDynamicMessageLength+64)
 
 	return "cc:1:8:" + b64 + ":" + length, nil
 }
