@@ -2,10 +2,12 @@ package Ed25519Sha256
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/agl/ed25519"
@@ -37,8 +39,9 @@ type Fulfillment struct {
 	MessageId    []byte
 	FixedMessage []byte
 	// MaxDynamicMessageLength uint64
-	DynamicMessage []byte
-	Signature      []byte
+	DynamicMessage       []byte
+	Signature            []byte
+	MaxFulfillmentLength uint64
 }
 
 func (ful Fulfillment) Serialize(pubkey []byte, privkey [64]byte) string {
@@ -56,6 +59,9 @@ func (ful Fulfillment) Serialize(pubkey []byte, privkey [64]byte) string {
 
 func DeserializeFulfillment(ful string) (*Fulfillment, error) {
 	parts := strings.Split(ful, ":")
+	if len(parts) != 5 {
+		return nil, errors.New("parsing error")
+	}
 
 	if parts[0] != "cf" {
 		return nil, errors.New("fulfillments must start with \"cf\"")
@@ -104,28 +110,35 @@ func DeserializeFulfillment(ful string) (*Fulfillment, error) {
 		return nil, errors.New("signature not valid")
 	}
 
+	// Get MaxFulfillmentLength
+	maxFulfillmentLength, err := strconv.ParseUint(parts[4], 10, 64)
+	if err != nil {
+		return nil, errors.New("invalid maxFulfillmentLength")
+	}
+
 	return &Fulfillment{
 		PublicKey:    pubkey,
 		MessageId:    messageId,
 		FixedMessage: fixedMessage,
 		// MaxDynamicMessageLength: maxDynamicMessageLength,
-		DynamicMessage: dynamicMessage,
-		Signature:      signature,
+		DynamicMessage:       dynamicMessage,
+		Signature:            signature,
+		MaxFulfillmentLength: maxFulfillmentLength,
 	}, nil
 }
 
 func (ful Fulfillment) Condition() (string, error) {
 
-	payload := base64.URLEncoding.EncodeToString(bytes.Join([][]byte{
+	// payload := base64.URLEncoding.EncodeToString(
+
+	hash := sha256.Sum256(bytes.Join([][]byte{
 		encoding.MakeVarbyte(ful.PublicKey),
 		encoding.MakeVarbyte(ful.MessageId),
 		encoding.MakeVarbyte(ful.FixedMessage),
 		// encoding.MakeVaruint(ful.MaxDynamicMessageLength),
 	}, []byte{}))
 
-	length := fmt.Sprintf("%d", uint64(len(payload)))
-
-	return "cc:1:8:" + payload + ":" + length, nil
+	return "cc:1:8:" + base64.URLEncoding.EncodeToString(hash[:]) + ":" + fmt.Sprintf("%d", MaxFulfillmentLength), nil
 }
 
 type Condition struct {

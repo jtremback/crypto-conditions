@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+type Fulfillment struct {
+	Preimage []byte
+}
+
 func MakeFulfillment(pre []byte) string {
 	return "cf:1:1:" + base64.URLEncoding.EncodeToString(pre)
 }
