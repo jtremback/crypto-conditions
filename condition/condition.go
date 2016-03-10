@@ -80,24 +80,6 @@ func (self *Sha256) ConditionFromFulfillment(ful string) (string, error) {
 	return "cc:1:1:" + b64 + ":" + length, nil
 }
 
-// type RsaSha256 struct {
-// 	MessageId               []byte
-// 	FixedMessage            []byte
-// 	MaxDynamicMessageLength uint64
-// 	DynamicMessage          []byte
-// }
-
-// func (self RsaSha256) MakeFulfillment(privkey rsa.PrivateKey) string {
-// 	payload := [][]byte{
-// 		makeVarbyte(privkey.PublicKey.N.Bytes()),
-// 		makeVarbyte(config.MessageId),
-// 		makeVarbyte(config.FixedMessage),
-// 		makeUvarint(config.MaxDynamicMessageLength),
-// 		makeVarbyte(config.DynamicMessage),
-//         makeVarbyte(privkey.Sign),
-// 	}
-// }
-
 type Ed25519Sha256 struct {
 	MessageId               []byte
 	FixedMessage            []byte
