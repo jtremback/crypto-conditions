@@ -1,3 +1,4 @@
+// Generates and parses Ed25519-Sha256 Crypto Conditions
 package Ed25519Sha256
 
 import (

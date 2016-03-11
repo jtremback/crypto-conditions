@@ -1,3 +1,4 @@
+// Generates and parses Sha256 Crypto Conditions
 package Sha256
 
 import (

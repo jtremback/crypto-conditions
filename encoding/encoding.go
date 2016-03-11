@@ -1,3 +1,4 @@
+// Tools for binary-encoding Crypto Conditions
 package encoding
 
 import (
