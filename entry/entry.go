@@ -9,6 +9,42 @@ import (
 	"github.com/jtremback/crypto-conditions/sha256"
 )
 
+type Condition interface {
+}
+
+//Interface Layer abstracting over
+type Fullfillment interface {
+	Serialize() string
+	Fullfill(Condition) bool
+}
+
+func ParseFullfillment(ful string) (Fullfillment, error) {
+
+	parts := strings.Split(ful, ":")
+	if len(parts) != 4 {
+		return "", errors.New("parsing error")
+	}
+
+	if parts[0] != "cf" {
+		return "", errors.New("fulfillments must start with \"cf\"")
+	}
+
+	if parts[1] != "1" {
+		return "", errors.New("must be protocol version 1")
+	}
+
+	switch parts[2] {
+	case "1":
+		return Sha256.ParseFulfillment(ful)
+	case "2":
+		return Ed25519Sha256.ParseFulfillment(ful)
+	case "4":
+		return ThresholdSha256.ParseFulfillment(ful)
+	default:
+		return "", errors.New("unsupported condition type")
+	}
+}
+
 func FulfillmentToCondition(ful string) (string, error) {
 	parts := strings.Split(ful, ":")
 	if len(parts) != 4 {
