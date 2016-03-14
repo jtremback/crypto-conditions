@@ -1,14 +1,17 @@
 // Generates and parses Ed25519-Sha256 Crypto Conditions
-package Ed25519Sha256
+package ThresholdSha256
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/jtremback/crypto-conditions/encoding"
+	"github.com/jtremback/crypto-conditions/entry"
 )
 
 func sliceTo64Byte(slice []byte) *[64]byte {
@@ -52,19 +55,20 @@ type Fulfillment struct {
 	Threshold       uint64
 	SubFulfillments WeightedStrings
 	SubConditions   WeightedStrings
+	Length          uint64
 }
 
 func (wss WeightedStrings) MakeVarray() []byte {
-	b := [][]byte{}
+	b := []byte{}
 
 	for _, ws := range wss {
 		b = append(b, encoding.MakeVarbyte(bytes.Join([][]byte{
 			encoding.MakeUvarint(ws.Weight),
 			encoding.MakeVarbyte([]byte(ws.String)),
-		}, []byte{})))
+		}, []byte{}))...)
 	}
 
-	return bytes.Join(b, []byte{})
+	return b
 }
 
 func ParseWeightedStrings(b []byte) WeightedStrings {
@@ -84,27 +88,13 @@ func ParseWeightedStrings(b []byte) WeightedStrings {
 	return ws
 }
 
-func ParseFulfillments(b) []Fulfillment {
-	fuls := []Fulfillment{}
-
-	wss := ParseWeightedStrings(b)
-
-	for _, ws := range wss {
-		append()
-	}
-}
-
-func ParseConditions(b) []Condition {
-
-}
-
-func (ful Fulfillment) Serialize(privkey []byte) string {
+func (ful Fulfillment) Serialize() string {
 	sort.Sort(WeightedStrings(ful.SubFulfillments))
 	sort.Sort(WeightedStrings(ful.SubConditions))
 	payload := base64.URLEncoding.EncodeToString(bytes.Join([][]byte{
 		encoding.MakeUvarint(ful.Threshold),
+		encoding.MakeVarbyte(ful.SubFulfillments.MakeVarray()),
 		encoding.MakeVarbyte(ful.SubConditions.MakeVarray()),
-		encoding.MakeUvarint(ful.Threshold),
 	}, []byte{}))
 
 	return "cf:1:8:" + payload
@@ -135,49 +125,67 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 		return nil, errors.New("parsing error")
 	}
 
-	th, b := encoding.GetUvarint(b)
+	threshold, b := encoding.GetUvarint(b)
 
-	fuls, b := encoding.GetVarbyte(b)
+	fulfillments, b := encoding.GetVarbyte(b)
 
-	conds, b := encoding.GetVarbyte(b)
+	conditions, b := encoding.GetVarbyte(b)
 
 	ful := &Fulfillment{
 		Threshold:       threshold,
 		SubFulfillments: ParseWeightedStrings(fulfillments),
 		SubConditions:   ParseWeightedStrings(conditions),
+		Length:          uint64(len(s)),
 	}
 
-	// TODO: iterate through SubConditions and SubFulfillments, parse and verify
+	var validWeight uint64
+	for i, ws := range ful.SubFulfillments {
+		cond, err := entry.FulfillmentToCondition(ws.String)
+		if err == nil && cond == ful.SubConditions[i].String {
+			validWeight += ws.Weight
+		}
+	}
+
+	if validWeight < ful.Threshold {
+		return nil, errors.New("too many invalid fulfillments")
+	}
 
 	return ful, nil
 }
 
-// // Turns an in-memory Fulfillment to an in-memory Condition. DynamicMessage and Signature
-// // are discarded if present.
-// func (ful Fulfillment) Condition() string {
-// 	hash := sha256.Sum256(bytes.Join([][]byte{
-// 		encoding.MakeVarbyte(ful.PublicKey),
-// 		encoding.MakeVarbyte(ful.MessageId),
-// 		encoding.MakeVarbyte(ful.FixedMessage),
-// 	}, []byte{}))
+// Turns an in-memory Fulfillment to an in-memory Condition.
+func (ful Fulfillment) Condition() Condition {
+	return Condition{
+		Threshold:            ful.Threshold,
+		SubConditions:        ful.SubConditions,
+		MaxFulfillmentLength: ful.Length,
+	}
+}
 
-// 	return "cc:1:8:" + base64.URLEncoding.EncodeToString(hash[:]) + ":" + strconv.FormatUint(ful.MaxFulfillmentLength, 10)
-// }
+type Condition struct {
+	Threshold            uint64
+	SubConditions        WeightedStrings
+	MaxFulfillmentLength uint64
+}
 
-// type Condition struct {
-// 	PublicKey            []byte
-// 	MessageId            []byte
-// 	FixedMessage         []byte
-// 	MaxFulfillmentLength uint64
-// }
+// Serializes to the Crypto Conditions string format.
+func (cond Condition) Serialize() string {
+	hash := sha256.Sum256(bytes.Join([][]byte{
+		encoding.MakeUvarint(8),
+		encoding.MakeUvarint(cond.Threshold),
+		encoding.MakeVarbyte(cond.SubConditions.MakeVarray()),
+	}, []byte{}))
 
-// // Serializes to the Crypto Conditions string format.
-// func (cond Condition) Serialize() string {
-// 	hash := sha256.Sum256(bytes.Join([][]byte{
-// 		encoding.MakeVarbyte(cond.PublicKey),
-// 		encoding.MakeVarbyte(cond.MessageId),
-// 		encoding.MakeVarbyte(cond.FixedMessage),
-// 	}, []byte{}))
+	return "cc:1:8:" + base64.URLEncoding.EncodeToString(hash[:]) + ":" + strconv.FormatUint(cond.MaxFulfillmentLength, 10)
+}
 
-// 	return "cc:1:8:" + base64.URLEncoding.EncodeToString(hash[:]) + ":" + strconv.FormatUint(cond.MaxFulfillmentLength, 10)
-// }
+func FulfillmentToCondition(s string) (string, error) {
+	ful, err := ParseFulfillment(s)
+	if err != nil {
+		return "", err
+	}
+
+	s = ful.Condition().Serialize()
+
+	return s, nil
+}
