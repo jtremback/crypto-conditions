@@ -18,7 +18,7 @@ type Fulfillment struct {
 }
 
 // Serializes to the Crypto Conditions string format. Discards the MaxFulfillmentLength.
-func (ful Fulfillment) Serialize() string {
+func (ful *Fulfillment) Serialize() string {
 	return "cf:1:1:" + base64.URLEncoding.EncodeToString(ful.Preimage)
 }
 
@@ -54,9 +54,9 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 	return ful, nil
 }
 
-// Turns an in-memory Fulfillment to an in-memory Condition. If the MaxFulfillmentLength is
-// not set on the Fulfillment, it will be set to the Fulfillment's serialized length.
-func (ful Fulfillment) Condition() Condition {
+//Turns an in-memory Fulfillment to an in-memory Condition. If the MaxFulfillmentLength is
+//not set on the Fulfillment, it will be set to the Fulfillment's serialized length.
+func (ful *Fulfillment) Condition() Condition {
 	var length uint64
 
 	if ful.MaxFulfillmentLength == 0 {
@@ -81,7 +81,7 @@ type Condition struct {
 }
 
 // Serializes to the Crypto Conditions string format.
-func (cond Condition) Serialize() string {
+func (cond *Condition) Serialize() string {
 	return "cc:1:1:" + base64.URLEncoding.EncodeToString(cond.Hash[:]) + ":" + strconv.FormatUint(cond.MaxFulfillmentLength, 10)
 }
 
@@ -91,7 +91,8 @@ func FulfillmentToCondition(s string) (string, error) {
 		return "", err
 	}
 
-	s = ful.Condition().Serialize()
+	cond := ful.Condition()
 
-	return s, nil
+	condString := cond.Serialize()
+	return condString, nil
 }

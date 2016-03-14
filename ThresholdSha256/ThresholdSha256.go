@@ -39,9 +39,9 @@ type WeightedString struct {
 
 type WeightedStrings []WeightedString
 
-func (a WeightedStrings) Len() int      { return len(a) }
-func (a WeightedStrings) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a WeightedStrings) Less(i, j int) bool {
+func (a *WeightedStrings) Len() int      { return len(a) }
+func (a *WeightedStrings) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a *WeightedStrings) Less(i, j int) bool {
 	// Sort lexicographically if the lengths are equal
 	if len(a[i].String) == len(a[j].String) {
 		return a[i].String < a[j].String
@@ -58,7 +58,7 @@ type Fulfillment struct {
 	Length          uint64
 }
 
-func (wss WeightedStrings) MakeVarray() []byte {
+func (wss *WeightedStrings) MakeVarray() []byte {
 	b := []byte{}
 
 	for _, ws := range wss {
@@ -88,7 +88,7 @@ func ParseWeightedStrings(b []byte) WeightedStrings {
 	return ws
 }
 
-func (ful Fulfillment) Serialize() string {
+func (ful *Fulfillment) Serialize() string {
 	sort.Sort(WeightedStrings(ful.SubFulfillments))
 	sort.Sort(WeightedStrings(ful.SubConditions))
 	payload := base64.URLEncoding.EncodeToString(bytes.Join([][]byte{
@@ -154,7 +154,7 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 }
 
 // Turns an in-memory Fulfillment to an in-memory Condition.
-func (ful Fulfillment) Condition() Condition {
+func (ful *Fulfillment) Condition() Condition {
 	return Condition{
 		Threshold:            ful.Threshold,
 		SubConditions:        ful.SubConditions,
@@ -169,7 +169,7 @@ type Condition struct {
 }
 
 // Serializes to the Crypto Conditions string format.
-func (cond Condition) Serialize() string {
+func (cond *Condition) Serialize() string {
 	hash := sha256.Sum256(bytes.Join([][]byte{
 		encoding.MakeUvarint(8),
 		encoding.MakeUvarint(cond.Threshold),
@@ -185,7 +185,9 @@ func FulfillmentToCondition(s string) (string, error) {
 		return "", err
 	}
 
-	s = ful.Condition().Serialize()
+	cond := ful.Condition()
 
-	return s, nil
+	condString := cond.Serialize()
+
+	return condString, nil
 }

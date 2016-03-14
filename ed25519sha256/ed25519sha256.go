@@ -41,7 +41,7 @@ type Fulfillment struct {
 }
 
 // Serializes to the Crypto Conditions Fulfillment string format.
-func (ful Fulfillment) Serialize() string {
+func (ful *Fulfillment) Serialize() string {
 	payload := base64.URLEncoding.EncodeToString(bytes.Join([][]byte{
 		encoding.MakeVarbyte(ful.PublicKey[:]),
 		encoding.MakeVarbyte(ful.MessageId),
@@ -113,7 +113,7 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 
 // Turns an in-memory Fulfillment to an in-memory Condition. DynamicMessage and Signature
 // are discarded if present.
-func (ful Fulfillment) Condition() Condition {
+func (ful *Fulfillment) Condition() Condition {
 	var length uint64
 
 	if ful.MaxDynamicMessageLength == 0 {
@@ -138,7 +138,7 @@ type Condition struct {
 }
 
 // Serializes to the Crypto Conditions string format.
-func (cond Condition) Serialize() string {
+func (cond *Condition) Serialize() string {
 	hash := sha256.Sum256(bytes.Join([][]byte{
 		encoding.MakeVarbyte(cond.PublicKey[:]),
 		encoding.MakeVarbyte(cond.MessageId),
@@ -154,7 +154,8 @@ func FulfillmentToCondition(s string) (string, error) {
 		return "", err
 	}
 
-	s = ful.Condition().Serialize()
+	cond := ful.Condition()
 
-	return s, nil
+	condString := cond.Serialize()
+	return condString, nil
 }
