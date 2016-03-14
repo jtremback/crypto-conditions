@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/binary"
 	"errors"
 	"strconv"
 	"strings"
@@ -82,29 +81,19 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 		return nil, errors.New("parsing error")
 	}
 
-	// Get PublicKey
-	length, offset := binary.Uvarint(b)
-	pubkey, b := b[offset:][:length], b[offset:][length:]
+	pubkey, b := encoding.GetVarbyte(b)
 
-	// Get MessageId
-	length, offset = binary.Uvarint(b)
-	messageId, b := b[offset:][:length], b[offset:][length:]
+	messageId, b := encoding.GetVarbyte(b)
 
-	// Get FixedMessage
-	length, offset = binary.Uvarint(b)
-	fixedMessage, b := b[offset:][:length], b[offset:][length:]
+	fixedMessage, b := encoding.GetVarbyte(b)
 
 	// // Get MaxDynamicMessageLength
 	// maxDynamicMessageLength, offset := binary.Uvarint(b)
-	// b = b[offset:][length:]
+	// b = b[:offset:]
 
-	// Get DynamicMessage
-	length, offset = binary.Uvarint(b)
-	dynamicMessage, b := b[offset:][:length], b[offset:][length:]
+	dynamicMessage, b := encoding.GetVarbyte(b)
 
-	// Get Signature
-	length, offset = binary.Uvarint(b)
-	signature, b := b[offset:][:length], b[offset:][length:]
+	signature, b := encoding.GetVarbyte(b)
 
 	// Check signature
 	fullMessage := append(fixedMessage, dynamicMessage...)
