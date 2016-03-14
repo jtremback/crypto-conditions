@@ -84,3 +84,14 @@ type Condition struct {
 func (cond Condition) Serialize() string {
 	return "cc:1:1:" + base64.URLEncoding.EncodeToString(cond.Hash[:]) + ":" + strconv.FormatUint(cond.MaxFulfillmentLength, 10)
 }
+
+func FulfillmentToCondition(s string) (string, error) {
+	ful, err := ParseFulfillment(s)
+	if err != nil {
+		return "", err
+	}
+
+	s = ful.Condition().Serialize()
+
+	return s, nil
+}

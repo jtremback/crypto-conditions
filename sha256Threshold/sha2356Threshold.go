@@ -84,6 +84,20 @@ func ParseWeightedStrings(b []byte) WeightedStrings {
 	return ws
 }
 
+func ParseFulfillments(b) []Fulfillment {
+	fuls := []Fulfillment{}
+
+	wss := ParseWeightedStrings(b)
+
+	for _, ws := range wss {
+		append()
+	}
+}
+
+func ParseConditions(b) []Condition {
+
+}
+
 func (ful Fulfillment) Serialize(privkey []byte) string {
 	sort.Sort(WeightedStrings(ful.SubFulfillments))
 	sort.Sort(WeightedStrings(ful.SubConditions))
@@ -121,11 +135,11 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 		return nil, errors.New("parsing error")
 	}
 
-	threshold, b := encoding.GetUvarint(b)
+	th, b := encoding.GetUvarint(b)
 
-	fulfillments, b := encoding.GetVarbyte(b)
+	fuls, b := encoding.GetVarbyte(b)
 
-	conditions, b := encoding.GetVarbyte(b)
+	conds, b := encoding.GetVarbyte(b)
 
 	ful := &Fulfillment{
 		Threshold:       threshold,
@@ -133,7 +147,7 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 		SubConditions:   ParseWeightedStrings(conditions),
 	}
 
-	// TODO: iterate through SubConditions and SubFulfillments and verify
+	// TODO: iterate through SubConditions and SubFulfillments, parse and verify
 
 	return ful, nil
 }

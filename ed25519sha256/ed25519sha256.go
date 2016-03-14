@@ -13,47 +13,50 @@ import (
 	"github.com/jtremback/crypto-conditions/encoding"
 )
 
-func sliceTo64Byte(slice []byte) *[64]byte {
+func sliceTo64Byte(slice []byte) [64]byte {
 	if len(slice) == 64 {
 		var array [64]byte
 		copy(array[:], slice[:64])
-		return &array
+		return array
 	}
-	return &[64]byte{}
+	return [64]byte{}
 }
 
-func sliceTo32Byte(slice []byte) *[32]byte {
+func sliceTo32Byte(slice []byte) [32]byte {
 	if len(slice) == 32 {
 		var array [32]byte
 		copy(array[:], slice[:32])
-		return &array
+		return array
 	}
-	return &[32]byte{}
+	return [32]byte{}
 }
 
 type Fulfillment struct {
-	PublicKey    []byte
-	MessageId    []byte
-	FixedMessage []byte
-	// MaxDynamicMessageLength uint64
-	DynamicMessage       []byte
-	Signature            []byte
-	MaxFulfillmentLength uint64
+	PublicKey               [32]byte
+	MessageId               []byte
+	FixedMessage            []byte
+	MaxDynamicMessageLength uint64
+	DynamicMessage          []byte
+	Signature               [64]byte
 }
 
-// Serializes to the Crypto Conditions Fulfillment string format. Unlike Sha256 Fulfillments,
-// it has a MaxFulfillmentLength
-func (ful Fulfillment) Serialize(privkey []byte) string {
+// Serializes to the Crypto Conditions Fulfillment string format.
+func (ful Fulfillment) Serialize() string {
 	payload := base64.URLEncoding.EncodeToString(bytes.Join([][]byte{
-		encoding.MakeVarbyte(ful.PublicKey),
+		encoding.MakeVarbyte(ful.PublicKey[:]),
 		encoding.MakeVarbyte(ful.MessageId),
 		encoding.MakeVarbyte(ful.FixedMessage),
-		// encoding.MakeVaruint(ful.MaxDynamicMessageLength),
+		encoding.MakeUvarint(ful.MaxDynamicMessageLength),
 		encoding.MakeVarbyte(ful.DynamicMessage),
-		encoding.MakeVarbyte(ed25519.Sign(sliceTo64Byte(privkey), append(ful.FixedMessage, ful.DynamicMessage...))[:]),
+		encoding.MakeVarbyte(ful.Signature[:]),
 	}, []byte{}))
 
-	return "cf:1:8:" + payload + ":" + strconv.FormatUint(ful.MaxFulfillmentLength, 10)
+	return "cf:1:8:" + payload
+}
+
+// Signs an in-memory Fulfillment
+func (ful *Fulfillment) Sign(privkey [64]byte) {
+	ful.Signature = *ed25519.Sign(&privkey, append(ful.FixedMessage, ful.DynamicMessage...))
 }
 
 // Parses Fulfillment out of the Crypto Conditions string format,
@@ -81,40 +84,28 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 		return nil, errors.New("parsing error")
 	}
 
-	pubkey, b := encoding.GetVarbyte(b)
-
+	pk, b := encoding.GetVarbyte(b)
+	pubkey := sliceTo32Byte(pk)
 	messageId, b := encoding.GetVarbyte(b)
-
 	fixedMessage, b := encoding.GetVarbyte(b)
-
-	// // Get MaxDynamicMessageLength
-	// maxDynamicMessageLength, offset := binary.Uvarint(b)
-	// b = b[:offset:]
-
+	maxDynamicMessageLength, b := encoding.GetUvarint(b)
 	dynamicMessage, b := encoding.GetVarbyte(b)
-
-	signature, b := encoding.GetVarbyte(b)
+	sig, b := encoding.GetVarbyte(b)
+	signature := sliceTo64Byte(sig)
 
 	// Check signature
 	fullMessage := append(fixedMessage, dynamicMessage...)
-	if !ed25519.Verify(sliceTo32Byte(pubkey), fullMessage, sliceTo64Byte(signature)) {
+	if !ed25519.Verify(&pubkey, fullMessage, &signature) {
 		return nil, errors.New("signature not valid")
 	}
 
-	// Get MaxFulfillmentLength
-	maxFulfillmentLength, err := strconv.ParseUint(parts[4], 10, 64)
-	if err != nil {
-		return nil, errors.New("invalid maxFulfillmentLength")
-	}
-
 	ful := &Fulfillment{
-		PublicKey:    pubkey,
-		MessageId:    messageId,
-		FixedMessage: fixedMessage,
-		// MaxDynamicMessageLength: maxDynamicMessageLength,
-		DynamicMessage:       dynamicMessage,
-		Signature:            signature,
-		MaxFulfillmentLength: maxFulfillmentLength,
+		PublicKey:               pubkey,
+		MessageId:               messageId,
+		FixedMessage:            fixedMessage,
+		MaxDynamicMessageLength: maxDynamicMessageLength,
+		DynamicMessage:          dynamicMessage,
+		Signature:               signature,
 	}
 
 	return ful, nil
@@ -122,30 +113,48 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 
 // Turns an in-memory Fulfillment to an in-memory Condition. DynamicMessage and Signature
 // are discarded if present.
-func (ful Fulfillment) Condition() string {
-	hash := sha256.Sum256(bytes.Join([][]byte{
-		encoding.MakeVarbyte(ful.PublicKey),
-		encoding.MakeVarbyte(ful.MessageId),
-		encoding.MakeVarbyte(ful.FixedMessage),
-	}, []byte{}))
+func (ful Fulfillment) Condition() Condition {
+	var length uint64
 
-	return "cc:1:8:" + base64.URLEncoding.EncodeToString(hash[:]) + ":" + strconv.FormatUint(ful.MaxFulfillmentLength, 10)
+	if ful.MaxDynamicMessageLength == 0 {
+		length = uint64(len(ful.Serialize()))
+	} else {
+		length = ful.MaxDynamicMessageLength
+	}
+
+	return Condition{
+		PublicKey:               ful.PublicKey,
+		MessageId:               ful.MessageId,
+		FixedMessage:            ful.FixedMessage,
+		MaxDynamicMessageLength: length,
+	}
 }
 
 type Condition struct {
-	PublicKey            []byte
-	MessageId            []byte
-	FixedMessage         []byte
-	MaxFulfillmentLength uint64
+	PublicKey               [32]byte
+	MessageId               []byte
+	FixedMessage            []byte
+	MaxDynamicMessageLength uint64
 }
 
 // Serializes to the Crypto Conditions string format.
 func (cond Condition) Serialize() string {
 	hash := sha256.Sum256(bytes.Join([][]byte{
-		encoding.MakeVarbyte(cond.PublicKey),
+		encoding.MakeVarbyte(cond.PublicKey[:]),
 		encoding.MakeVarbyte(cond.MessageId),
 		encoding.MakeVarbyte(cond.FixedMessage),
 	}, []byte{}))
 
-	return "cc:1:8:" + base64.URLEncoding.EncodeToString(hash[:]) + ":" + strconv.FormatUint(cond.MaxFulfillmentLength, 10)
+	return "cc:1:8:" + base64.URLEncoding.EncodeToString(hash[:]) + ":" + strconv.FormatUint(cond.MaxDynamicMessageLength, 10)
+}
+
+func FulfillmentToCondition(s string) (string, error) {
+	ful, err := ParseFulfillment(s)
+	if err != nil {
+		return "", err
+	}
+
+	s = ful.Condition().Serialize()
+
+	return s, nil
 }
