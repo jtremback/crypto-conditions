@@ -21,6 +21,20 @@ func MakeVarbyte(buf []byte) []byte {
 	return b
 }
 
+func GetUvarint(b []byte) (uint64, []byte) {
+	uv, offset := binary.Uvarint(b)
+	b = b[:offset]
+
+	return uv, b
+}
+
+func GetVarbyte(b []byte) ([]byte, []byte) {
+	length, offset := binary.Uvarint(b)
+	vb, b := b[offset:][:length], b[offset:][length:]
+
+	return vb, b
+}
+
 // MakeVarray takes a slice of byte slices and returns a byte slice
 // containing a concatenated list of Varbytes
 func MakeVarray(items [][]byte) []byte {
