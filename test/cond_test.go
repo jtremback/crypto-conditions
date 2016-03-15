@@ -152,7 +152,8 @@ func TestEd25519Sha256Fulfillment(t *testing.T) {
 }
 
 func TestThresholdSha256Fulfillment(t *testing.T) {
-	ThresholdSha256.Fulfillment{}
+	thr := ThresholdSha256.Fulfillment{}
+	fmt.Println(thr)
 }
 
 // Extra keys
