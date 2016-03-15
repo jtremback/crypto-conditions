@@ -105,14 +105,14 @@ func (ful *Fulfillment) Serialize() string {
 		encoding.MakeVarbyte(ful.SubConditions.MakeVarray()),
 	}, []byte{}))
 
-	return "cf:1:8:" + payload
+	return "cf:1:4:" + payload
 }
 
 // Parses Fulfillment out of the Crypto Conditions string format,
 // and checks it for validity.
 func ParseFulfillment(s string) (*Fulfillment, error) {
 	parts := strings.Split(s, ":")
-	if len(parts) != 5 {
+	if len(parts) != 4 {
 		return nil, errors.New("parsing error")
 	}
 
@@ -165,6 +165,17 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 		Length:          uint64(len(s)),
 	}
 
+	return ful, nil
+}
+
+type Condition struct {
+	Threshold            uint64
+	SubConditions        WeightedStrings
+	MaxFulfillmentLength uint64
+}
+
+// Turns an in-memory Fulfillment to an in-memory Condition and checks it for validity.
+func (ful *Fulfillment) Condition() (*Condition, error) {
 	var validWeight uint64
 	for i, ws := range ful.SubFulfillments {
 		cond, err := entry(ws.String)
@@ -177,7 +188,11 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 		return nil, errors.New("too many invalid fulfillments")
 	}
 
-	return ful, nil
+	return &Condition{
+		Threshold:            ful.Threshold,
+		SubConditions:        ful.SubConditions,
+		MaxFulfillmentLength: ful.Length,
+	}, nil
 }
 
 func entry(ful string) (string, error) {
@@ -197,28 +212,13 @@ func entry(ful string) (string, error) {
 	switch parts[2] {
 	case "1":
 		return Sha256.FulfillmentToCondition(ful)
-	case "2":
+	case "8":
 		return Ed25519Sha256.FulfillmentToCondition(ful)
 	case "4":
 		return FulfillmentToCondition(ful)
 	default:
 		return "", errors.New("unsupported condition type")
 	}
-}
-
-// Turns an in-memory Fulfillment to an in-memory Condition.
-func (ful *Fulfillment) Condition() Condition {
-	return Condition{
-		Threshold:            ful.Threshold,
-		SubConditions:        ful.SubConditions,
-		MaxFulfillmentLength: ful.Length,
-	}
-}
-
-type Condition struct {
-	Threshold            uint64
-	SubConditions        WeightedStrings
-	MaxFulfillmentLength uint64
 }
 
 // Serializes to the Crypto Conditions string format.
@@ -229,7 +229,7 @@ func (cond *Condition) Serialize() string {
 		encoding.MakeVarbyte(cond.SubConditions.MakeVarray()),
 	}, []byte{}))
 
-	return "cc:1:8:" + base64.URLEncoding.EncodeToString(hash[:]) + ":" + strconv.FormatUint(cond.MaxFulfillmentLength, 10)
+	return "cc:1:4:" + base64.URLEncoding.EncodeToString(hash[:]) + ":" + strconv.FormatUint(cond.MaxFulfillmentLength, 10)
 }
 
 func FulfillmentToCondition(s string) (string, error) {
@@ -238,7 +238,10 @@ func FulfillmentToCondition(s string) (string, error) {
 		return "", err
 	}
 
-	cond := ful.Condition()
+	cond, err := ful.Condition()
+	if err != nil {
+		return "", err
+	}
 
 	condString := cond.Serialize()
 

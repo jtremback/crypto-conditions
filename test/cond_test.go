@@ -166,11 +166,12 @@ func TestThresholdSha256Fulfillment(t *testing.T) {
 		DynamicMessage:          []byte{90},
 		MaxDynamicMessageLength: 99999,
 	}
+	edFul.Sign(privkey1)
 	edFulString := edFul.Serialize()
 	edCond := edFul.Condition()
 	edCondString := edCond.Serialize()
 
-	thr := ThresholdSha256.Fulfillment{
+	thrFul := ThresholdSha256.Fulfillment{
 		Threshold: 80,
 		SubConditions: ThresholdSha256.WeightedStrings{
 			ThresholdSha256.WeightedString{
@@ -193,7 +194,14 @@ func TestThresholdSha256Fulfillment(t *testing.T) {
 			},
 		},
 	}
-	fmt.Println(thr)
+
+	thrCond, err := thrFul.Condition()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	thrCondString := thrCond.Serialize()
+	fmt.Println(thrCondString)
 }
 
 // Extra keys
