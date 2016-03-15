@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/jtremback/crypto-conditions/ThresholdSha256"
 	"github.com/jtremback/crypto-conditions/ed25519sha256"
 	"github.com/jtremback/crypto-conditions/encoding"
 	"github.com/jtremback/crypto-conditions/sha256"
@@ -148,6 +149,10 @@ func TestEd25519Sha256Fulfillment(t *testing.T) {
 		fmt.Println(cond1)
 		fmt.Println(cond2)
 	}
+}
+
+func TestThresholdSha256Fulfillment(t *testing.T) {
+	ThresholdSha256.Fulfillment{}
 }
 
 // Extra keys
