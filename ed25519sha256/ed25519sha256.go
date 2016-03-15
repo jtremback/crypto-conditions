@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -63,7 +64,7 @@ func (ful *Fulfillment) Sign(privkey [64]byte) {
 // and checks it for validity, including the signature.
 func ParseFulfillment(s string) (*Fulfillment, error) {
 	parts := strings.Split(s, ":")
-	if len(parts) != 5 {
+	if len(parts) != 4 {
 		return nil, errors.New("parsing error")
 	}
 
@@ -74,7 +75,6 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 	if parts[1] != "1" {
 		return nil, errors.New("must be protocol version 1")
 	}
-
 	if parts[2] != "8" {
 		return nil, errors.New("not an Ed25519Sha256 condition")
 	}
@@ -84,13 +84,35 @@ func ParseFulfillment(s string) (*Fulfillment, error) {
 		return nil, errors.New("parsing error")
 	}
 
-	pk, b := encoding.GetVarbyte(b)
+	pk, b, err := encoding.GetVarbyte(b)
+	if err != nil {
+		return nil, err
+	}
 	pubkey := sliceTo32Byte(pk)
-	messageId, b := encoding.GetVarbyte(b)
-	fixedMessage, b := encoding.GetVarbyte(b)
-	maxDynamicMessageLength, b := encoding.GetUvarint(b)
-	dynamicMessage, b := encoding.GetVarbyte(b)
-	sig, b := encoding.GetVarbyte(b)
+
+	messageId, b, err := encoding.GetVarbyte(b)
+	if err != nil {
+		return nil, err
+	}
+	fixedMessage, b, err := encoding.GetVarbyte(b)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("foo", len(b))
+	maxDynamicMessageLength, b, err := encoding.GetUvarint(b)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("foo", maxDynamicMessageLength, len(b))
+	dynamicMessage, b, err := encoding.GetVarbyte(b)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, b, err := encoding.GetVarbyte(b)
+	if err != nil {
+		return nil, err
+	}
 	signature := sliceTo64Byte(sig)
 
 	// Check signature

@@ -4,6 +4,7 @@ package encoding
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 )
 
 // MakeUvarint returns a byte slice containing a uvarint
@@ -21,18 +22,29 @@ func MakeVarbyte(buf []byte) []byte {
 	return b
 }
 
-func GetUvarint(b []byte) (uint64, []byte) {
+func GetUvarint(b []byte) (uint64, []byte, error) {
 	uv, offset := binary.Uvarint(b)
-	b = b[:offset]
+	if offset <= 0 {
+		return 0, []byte{}, errors.New("error parsing Uvarint")
+	}
 
-	return uv, b
+	b = b[offset:]
+
+	return uv, b, nil
 }
 
-func GetVarbyte(b []byte) ([]byte, []byte) {
+func GetVarbyte(b []byte) ([]byte, []byte, error) {
 	length, offset := binary.Uvarint(b)
+	if offset <= 0 {
+		return []byte{}, []byte{}, errors.New("error parsing Uvarint")
+	}
+
+	if !(uint64(len(b)) > length) {
+		return nil, nil, errors.New("error parsing Varbyte")
+	}
 	vb, b := b[offset:][:length], b[offset:][length:]
 
-	return vb, b
+	return vb, b, nil
 }
 
 // MakeVarray takes a slice of byte slices and returns a byte slice
