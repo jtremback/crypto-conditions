@@ -152,7 +152,47 @@ func TestEd25519Sha256Fulfillment(t *testing.T) {
 }
 
 func TestThresholdSha256Fulfillment(t *testing.T) {
-	thr := ThresholdSha256.Fulfillment{}
+	shaFul := &Sha256.Fulfillment{
+		Preimage: []byte{42},
+	}
+	shaFulString := shaFul.Serialize()
+	shaCond := shaFul.Condition()
+	shaCondString := shaCond.Serialize()
+
+	edFul := &Ed25519Sha256.Fulfillment{
+		PublicKey:               pubkey1,
+		MessageId:               []byte{2, 2, 2, 2, 2},
+		FixedMessage:            []byte{42},
+		DynamicMessage:          []byte{90},
+		MaxDynamicMessageLength: 99999,
+	}
+	edFulString := edFul.Serialize()
+	edCond := edFul.Condition()
+	edCondString := edCond.Serialize()
+
+	thr := ThresholdSha256.Fulfillment{
+		Threshold: 80,
+		SubConditions: ThresholdSha256.WeightedStrings{
+			ThresholdSha256.WeightedString{
+				Weight: 60,
+				String: shaCondString,
+			},
+			ThresholdSha256.WeightedString{
+				Weight: 20,
+				String: edCondString,
+			},
+		},
+		SubFulfillments: ThresholdSha256.WeightedStrings{
+			ThresholdSha256.WeightedString{
+				Weight: 60,
+				String: shaFulString,
+			},
+			ThresholdSha256.WeightedString{
+				Weight: 20,
+				String: edFulString,
+			},
+		},
+	}
 	fmt.Println(thr)
 }
 
