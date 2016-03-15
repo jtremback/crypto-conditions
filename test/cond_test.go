@@ -107,9 +107,9 @@ func TestEd25519Sha256Fulfillment(t *testing.T) {
 
 	serialized := ful.Serialize()
 
-	// if serialized != "cf:1:8:IMXGDZzVtaAPaQdC3kIP1AisNxQvIrZ1atXLBqx3QleqBQICAgICASoBWkA2xX6p4XT02llNku672lV8FravSFvXd8-d1U35qBgkGDFsWSOh5AmIlePfSOLpe9lYjjRKamenZopT2FvtJTsN:99999" {
-	// 	t.Fatal("serialization incorrect", serialized)
-	// }
+	if serialized != "cf:1:8:IMXGDZzVtaAPaQdC3kIP1AisNxQvIrZ1atXLBqx3QleqBQICAgICASqfjQYBWkA2xX6p4XT02llNku672lV8FravSFvXd8-d1U35qBgkGDFsWSOh5AmIlePfSOLpe9lYjjRKamenZopT2FvtJTsN" {
+		t.Fatal("serialization incorrect", serialized)
+	}
 
 	parsed, err := Ed25519Sha256.ParseFulfillment(serialized)
 	if err != nil {
