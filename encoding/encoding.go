@@ -7,6 +7,12 @@ import (
 	"errors"
 )
 
+// Regex for validating fulfillments
+//
+// This is a generic, future-proof version of the fulfillment regular
+// expression.
+const FULFILLMENT_REGEX = "/^cf:([1-9a-f][0-9a-f]{0,3}|0):[a-zA-Z0-9_-]*$/"
+
 // MakeUvarint returns a byte slice containing a uvarint
 func MakeUvarint(n uint64) []byte {
 	uvi := make([]byte, 10)
